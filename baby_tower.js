@@ -61,12 +61,12 @@ class Player {
 
         switch (this.state) {
             case "idle":
-                if (!this.healthy(w) && enemiesAround) {
-                    this.setState("healing");
-                } else {
+                // if (!this.healthy(w) && enemiesAround) {
+                //     this.setState("healing");
+                // } else {
                     this.setState("brave");
-                }
-                if (this.injured(w) && !enemiesAround) {
+                // }
+                if (this.injured(w) && !this.exitInSight(w)) {
                     this.setState("healing");
                 }
                 if (this.healthy(w) || rangedEnemiesAround) {
@@ -141,6 +141,11 @@ class Player {
             case "rangedEnemyAhead":
                 w.pivot();
                 break;
+            case "allyInFront":
+                if (this.isAllyCaptive(w)) {
+                    w.rescue(this.direction);
+                }
+                break;
             default:
                 switch (surroundings.forward) {
                     case "enemyInFront":
@@ -155,10 +160,18 @@ class Player {
                         w.walk(this.direction);
                         break;
                     case "rangedEnemyAhead":
-                        w.shoot(this.direction);
+                        if(this.healthFull(w)){
+                            w.walk(this.direction);
+                        } else {
+                            w.shoot(this.direction);
+                        }
                         break;
                     case "meleeEnemyAhead":
-                        w.shoot(this.direction);
+                        if(this.healthFull(w)){
+                            w.walk(this.direction);
+                        } else {
+                            w.shoot(this.direction);
+                        }
                         break;
                     case "wallInFront":
                         this.foundWall = true;
@@ -173,6 +186,14 @@ class Player {
                         }
                         break;
                     case "nothingInFront":
+                        if (this.onlyWallAhead(w)) {
+                            this.foundWall = true;
+                            this.spin(w);
+                        }
+                        if(this.onlyStairsAhead(w) && !this.foundStairs && !this.foundWall && this.thereIsStuffOnTheLeft) {
+                            this.foundStairs = true;
+                            this.spin(w);
+                        }
                         w.walk(this.direction);
                         break;
                 };
@@ -247,6 +268,10 @@ class Player {
         return w.health() >= 9;
     }
 
+    healthFull(w) {
+        return w.health() == 20;
+    }
+
     enemyInFront(w) {
         return !w.feel(this.direction).isEmpty() && w.feel(this.direction).isUnit() && w.feel(this.direction).getUnit().isEnemy();
     }
@@ -284,6 +309,36 @@ class Player {
 
     wallInFront(w) {
         return w.feel(this.direction).isWall();
+    }
+
+    onlyWallAhead(w) {
+        const spaceWithWall = w.look(this.direction).find(space => space.isWall());
+        const spaceWithStairs = w.look(this.direction).find(space => space.isStairs());
+        const spaceWithUnit = w.look(this.direction).find(space => space.isUnit());
+        if (spaceWithWall && !spaceWithStairs && !spaceWithUnit) {
+            return true;
+        }
+
+        return false;
+    }
+
+    onlyStairsAhead(w) {
+        const spaceWithStairs = w.look(this.direction).find(space => space.isStairs());
+        const spaceWithUnit = w.look(this.direction).find(space => space.isUnit());
+        if (spaceWithStairs && !spaceWithUnit) {
+            return true;
+        }
+
+        return false;
+    }
+
+    exitInSight (w) {
+        const spaceWithStairs = w.look(this.direction).find(space => space.isStairs());
+        if (spaceWithStairs) {
+            return true;
+        }
+
+        return false;
     }
 
     spin(w) {
